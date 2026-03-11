@@ -60,12 +60,12 @@ function passesFilter(prop, filters) {
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
-body{background:${T.bg};}
+body{background:#F5F1EB;}
 input,select{outline:none;}
-input:focus,select:focus{border-color:${T.accent} !important;box-shadow:0 0 0 3px ${T.accentLight};}
+input:focus,select:focus{border-color:#2D6A4F !important;box-shadow:0 0 0 3px #2D6A4F18;}
 button{cursor:pointer;font-family:inherit;}
 ::-webkit-scrollbar{width:4px;}
-::-webkit-scrollbar-thumb{background:${T.faint};border-radius:2px;}
+::-webkit-scrollbar-thumb{background:#C4B8A8;border-radius:2px;}
 .fade-in{animation:fadeIn 0.35s ease;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 .prop-card:hover .card-hover-actions{opacity:1 !important;}
@@ -242,7 +242,7 @@ function ConfigScreen({ onDone, user, onSignOut }) {
 }
 
 // ─── FORM MODAL ───────────────────────────────────────────────────────────────
-const EMPTY_FORM = { alias: "", link: "", precio: "", area: "", metro: "", estacionamiento: false, banhos: 1, habitaciones: 2, orientacion: "", gastosCom: "" };
+const EMPTY_FORM = { alias: "", link: "", precio: "", area: "", metro: "", estacionamiento: false, banhos: 1, habitaciones: 2, orientacion: "", piso: "", gastosCom: "" };
 
 function PropForm({ initial = EMPTY_FORM, onSave, onCancel, filters }) {
   const [f, setF] = useState(initial);
@@ -311,23 +311,27 @@ function PropForm({ initial = EMPTY_FORM, onSave, onCancel, filters }) {
           </div>
           <div style={{ borderTop: `1px solid ${T.border}`, margin: "4px 0" }} />
           <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: T.faint }}>Información complementaria</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: T.muted }}>Orientación</label>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {["Norte", "Sur", "Oriente", "Poniente"].map(o => (
-                  <button key={o} onClick={() => set("orientacion", f.orientacion === o ? "" : o)} style={{
-                    flex: "1 1 40%", padding: "8px 4px", borderRadius: 8, fontSize: 12, fontWeight: 500,
-                    border: `1.5px solid ${f.orientacion === o ? T.accent : T.border}`,
-                    background: f.orientacion === o ? T.accentLight : "transparent",
-                    color: f.orientacion === o ? T.accent : T.muted,
-                    transition: "all 0.15s",
-                  }}>{o}</button>
-                ))}
-              </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: T.muted }}>Orientación</label>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {["Norte", "Nororiente", "Oriente", "Suroriente", "Sur", "Surponiente", "Poniente", "Norponiente"].map(o => (
+                <button key={o} onClick={() => set("orientacion", f.orientacion === o ? "" : o)} style={{
+                  flex: "1 1 22%", padding: "8px 4px", borderRadius: 8, fontSize: 11, fontWeight: 500,
+                  border: `1.5px solid ${f.orientacion === o ? T.accent : T.border}`,
+                  background: f.orientacion === o ? T.accentLight : "transparent",
+                  color: f.orientacion === o ? T.accent : T.muted,
+                  transition: "all 0.15s",
+                }}>{o}</button>
+              ))}
             </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <Input label="Piso" value={f.piso} onChange={v => set("piso", v)} type="number" min={1} max={50} step={1} placeholder="Ej: 8" />
             <Input label="Gastos comunes ($)" value={f.gastosCom} onChange={v => set("gastosCom", v)} type="number" min={0} step={5000} placeholder="Ej: 85000" />
           </div>
+
           {valid && !passes && (
             <div style={{ padding: "10px 14px", borderRadius: 8, background: T.warnLight, border: `1px solid ${T.warn}30`, fontSize: 13, color: T.warn }}>
               ⚠ Este depto no cumple tus filtros mínimos — igual puedes guardarlo, quedará marcado como descartado.
@@ -448,8 +452,9 @@ function ListScreen({ props, filters, selected, onSelect, onAdd, onEdit, onDelet
                         ["🚗", p.estacionamiento ? "Con estac." : "Sin estac."],
                         ["🛁", `${p.banhos} baño${p.banhos > 1 ? "s" : ""}`],
                         ["🛏", `${p.habitaciones} hab.`],
+                        ...(p.piso ? [["🏢", `Piso ${p.piso}`]] : []),
                         ...(p.orientacion ? [["🧭", p.orientacion]] : []),
-                        ...(p.gastosCom ? [["🏢", `$${Number(p.gastosCom).toLocaleString()} GC`]] : []),
+                        ...(p.gastosCom ? [["💵", `$${Number(p.gastosCom).toLocaleString()} GC`]] : []),
                       ].map(([icon, val]) => (
                         <span key={val} style={{ fontSize: 12, color: T.muted, display: "flex", alignItems: "center", gap: 4 }}>
                           <span>{icon}</span>{val}
@@ -596,13 +601,14 @@ function CompareScreen({ props, selected, onBack }) {
             { label: "Estacionamiento", key: "estacionamiento", format: v => v ? "✓ Sí" : "✗ No", lower: false },
             { label: "Baños", key: "banhos", format: v => v, lower: false },
             { label: "Habitaciones", key: "habitaciones", format: v => v, lower: false },
+            { label: "Piso", key: "piso", format: v => v ? `Piso ${v}` : "—", info: true },
             { label: "Orientación", key: "orientacion", format: v => v || "—", info: true },
             { label: "Gastos comunes", key: "gastosCom", format: v => v ? `$${Number(v).toLocaleString()}` : "—", info: true },
           ].map((row, ri) => {
             const vals = selectedProps.map(p => p[row.key]);
             const best = row.info ? null : (row.lower ? Math.min(...vals.filter(v => typeof v === "number")) : Math.max(...vals.filter(v => typeof v === "number")));
             return (
-              <div key={row.key} style={{ display: "grid", gridTemplateColumns: `160px repeat(${selectedProps.length}, 1fr)`, borderBottom: ri < 7 ? `1px solid ${T.border}` : "none", background: ri % 2 === 0 ? "transparent" : `${T.bg}80` }}>
+              <div key={row.key} style={{ display: "grid", gridTemplateColumns: `160px repeat(${selectedProps.length}, 1fr)`, borderBottom: ri < 8 ? `1px solid ${T.border}` : "none", background: ri % 2 === 0 ? "transparent" : `${T.bg}80` }}>
                 <div style={{ padding: "14px 24px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ color: T.muted, fontWeight: 500 }}>{row.label}</span>
                   {row.info && <span style={{ fontSize: 9, color: T.faint, background: T.border, padding: "1px 6px", borderRadius: 8, letterSpacing: 0.5, textTransform: "uppercase" }}>info</span>}
@@ -660,10 +666,10 @@ export default function App() {
   const [props, setProps] = useState([]);
   const [selected, setSelected] = useState([]);
   const [loadingProps, setLoadingProps] = useState(false);
-  const cargando = useRef(false);  
+  const cargando = useRef(false);
 
   const cargarProps = async () => {
-    if (cargando.current) return; 
+    if (cargando.current) return;
     cargando.current = true;
     setLoadingProps(true);
     const { data, error } = await supabase
@@ -675,13 +681,12 @@ export default function App() {
         id: d.id, alias: d.alias, link: d.link || "",
         precio: d.precio, area: d.area, metro: d.metro,
         estacionamiento: d.estacionamiento, banhos: d.banhos, habitaciones: d.habitaciones,
-        orientacion: d.orientacion || "", gastosCom: d.gastos_com || "",
+        piso: d.piso || "", orientacion: d.orientacion || "", gastosCom: d.gastos_com || "",
       })));
     }
     setLoadingProps(false);
   };
 
-  // Solo carga una vez al montar — sin listeners reactivos
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -697,14 +702,14 @@ export default function App() {
 
   const handleAdd = async (data) => {
     const { data: inserted, error } = await supabase.from("propiedades")
-      .insert([{ user_id: session.user.id, alias: data.alias, link: data.link, precio: data.precio, area: data.area, metro: data.metro, estacionamiento: data.estacionamiento, banhos: data.banhos, habitaciones: data.habitaciones, orientacion: data.orientacion || null, gastos_com: data.gastosCom || null }])
+      .insert([{ user_id: session.user.id, alias: data.alias, link: data.link, precio: data.precio, area: data.area, metro: data.metro, estacionamiento: data.estacionamiento, banhos: data.banhos, habitaciones: data.habitaciones, piso: data.piso ? Number(data.piso) : null, orientacion: data.orientacion || null, gastos_com: data.gastosCom || null }])
       .select().single();
     if (!error && inserted) setProps(prev => [...prev, { ...data, id: inserted.id }]);
   };
 
   const handleEdit = async (id, data) => {
     const { error } = await supabase.from("propiedades")
-      .update({ alias: data.alias, link: data.link, precio: data.precio, area: data.area, metro: data.metro, estacionamiento: data.estacionamiento, banhos: data.banhos, habitaciones: data.habitaciones, orientacion: data.orientacion || null, gastos_com: data.gastosCom || null })
+      .update({ alias: data.alias, link: data.link, precio: data.precio, area: data.area, metro: data.metro, estacionamiento: data.estacionamiento, banhos: data.banhos, habitaciones: data.habitaciones, piso: data.piso ? Number(data.piso) : null, orientacion: data.orientacion || null, gastos_com: data.gastosCom || null })
       .eq("id", id);
     if (!error) setProps(prev => prev.map(p => p.id === id ? { ...data, id } : p));
   };
