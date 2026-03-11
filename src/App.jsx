@@ -1,14 +1,20 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip
 } from "recharts";
+
+// ─── SUPABASE ────────────────────────────────────────────────────────────────
+const supabase = createClient(
+  "https://eoshllkbjocvpdbgxoqs.supabase.co",
+  "sb_publishable_nx5Chv756kDa53aGjq8KaA_U5qrKFAp"
+);
 
 // ─── PALETTE & TOKENS ────────────────────────────────────────────────────────
 const T = {
   bg: "#F5F1EB",
   surface: "#FEFCF8",
   border: "#E5DDD0",
-  borderStrong: "#C8BAA8",
   text: "#1C1712",
   muted: "#8C7B6B",
   faint: "#C4B8A8",
@@ -49,14 +55,6 @@ function overallScore(prop) {
 function passesFilter(prop, filters) {
   return prop.precio <= filters.maxPrecio && prop.area >= filters.minArea;
 }
-
-// ─── SAMPLE DATA ──────────────────────────────────────────────────────────────
-const SAMPLE = [
-  { id: 1, alias: "Ñuñoa - Irarrázaval", link: "https://portalinmobiliario.com", precio: 2400, area: 68, metro: 350, estacionamiento: true, banhos: 2, habitaciones: 2, orientacion: "Norte", gastosCom: 85000 },
-  { id: 2, alias: "Providencia - Lyon", link: "https://toctoc.com", precio: 3200, area: 85, metro: 200, estacionamiento: true, banhos: 2, habitaciones: 3, orientacion: "Oriente", gastosCom: 120000 },
-  { id: 3, alias: "Santiago - Brasil", link: "https://portalinmobiliario.com", precio: 1900, area: 52, metro: 600, estacionamiento: false, banhos: 1, habitaciones: 2, orientacion: "Sur", gastosCom: 45000 },
-  { id: 4, alias: "Las Condes - Manquehue", link: "", precio: 3400, area: 95, metro: 900, estacionamiento: true, banhos: 3, habitaciones: 3, orientacion: "Poniente", gastosCom: 210000 },
-];
 
 // ─── SHARED UI ────────────────────────────────────────────────────────────────
 const css = `
@@ -114,15 +112,75 @@ function Btn({ children, onClick, variant = "primary", disabled, style: s = {} }
   return <button disabled={disabled} onClick={onClick} style={{ ...base, ...variants[variant] }}>{children}</button>;
 }
 
+// ─── SCREEN 0: LOGIN ──────────────────────────────────────────────────────────
+function LoginScreen() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    setError("");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) { setError(error.message); setLoading(false); }
+  };
+
+  return (
+    <div className="fade-in" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, background: T.bg }}>
+      <div style={{ maxWidth: 400, width: "100%", textAlign: "center" }}>
+        <p style={{ fontSize: 11, letterSpacing: 3, color: T.faint, textTransform: "uppercase", marginBottom: 12 }}>Comparador de Deptos</p>
+        <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 38, fontWeight: 700, color: T.text, lineHeight: 1.1, marginBottom: 16 }}>
+          Bienvenido
+        </h1>
+        <p style={{ color: T.muted, fontSize: 15, lineHeight: 1.6, marginBottom: 40 }}>
+          Inicia sesión para guardar y comparar tus deptos favoritos. Tus datos estarán disponibles cada vez que vuelvas.
+        </p>
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 28, boxShadow: "0 2px 20px rgba(0,0,0,0.05)" }}>
+          <button onClick={handleGoogle} disabled={loading} style={{
+            width: "100%", padding: "13px 20px", borderRadius: 10,
+            border: `1.5px solid ${T.border}`, background: T.surface,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+            fontSize: 15, fontWeight: 600, color: T.text, cursor: loading ? "wait" : "pointer",
+            transition: "all 0.15s", fontFamily: "inherit", opacity: loading ? 0.6 : 1,
+          }}>
+            <svg width="20" height="20" viewBox="0 0 48 48">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            {loading ? "Conectando..." : "Continuar con Google"}
+          </button>
+          {error && <p style={{ marginTop: 12, fontSize: 13, color: T.danger, textAlign: "center" }}>{error}</p>}
+          <p style={{ marginTop: 20, fontSize: 12, color: T.faint, lineHeight: 1.6 }}>
+            Tus datos se almacenan de forma segura y privada. Solo tú puedes verlos.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── SCREEN 1: CONFIG ─────────────────────────────────────────────────────────
-function ConfigScreen({ onDone }) {
+function ConfigScreen({ onDone, user, onSignOut }) {
   const [maxPrecio, setMaxPrecio] = useState(3000);
   const [minArea, setMinArea] = useState(50);
 
   return (
     <div className="fade-in" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, background: T.bg }}>
       <div style={{ maxWidth: 440, width: "100%" }}>
-        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 40 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {user?.user_metadata?.avatar_url && (
+              <img src={user.user_metadata.avatar_url} style={{ width: 32, height: 32, borderRadius: "50%", border: `2px solid ${T.border}` }} />
+            )}
+            <span style={{ fontSize: 13, color: T.muted }}>{user?.user_metadata?.full_name || user?.email}</span>
+          </div>
+          <Btn variant="ghost" onClick={onSignOut} style={{ fontSize: 12 }}>Cerrar sesión</Btn>
+        </div>
+
         <div style={{ marginBottom: 48 }}>
           <p style={{ fontSize: 11, letterSpacing: 3, color: T.faint, textTransform: "uppercase", marginBottom: 12 }}>Comparador de Deptos</p>
           <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 38, fontWeight: 700, color: T.text, lineHeight: 1.1, marginBottom: 16 }}>
@@ -133,14 +191,12 @@ function ConfigScreen({ onDone }) {
           </p>
         </div>
 
-        {/* Form */}
         <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 28, display: "flex", flexDirection: "column", gap: 20, marginBottom: 24, boxShadow: "0 2px 20px rgba(0,0,0,0.05)" }}>
           <Input label="Precio máximo" value={maxPrecio} onChange={setMaxPrecio} type="number" hint="En UF · Rango típico: 2.000 – 3.500 UF" min={1000} max={10000} step={50} />
           <div style={{ borderTop: `1px solid ${T.border}` }} />
           <Input label="Superficie mínima" value={minArea} onChange={setMinArea} type="number" hint="En m² · Rango típico: 50 – 100 m²" min={20} max={300} step={5} />
         </div>
 
-        {/* Summary chips */}
         <div style={{ display: "flex", gap: 8, marginBottom: 28, flexWrap: "wrap" }}>
           <Chip>Precio ≤ {Number(maxPrecio).toLocaleString()} UF</Chip>
           <Chip>Superficie ≥ {minArea} m²</Chip>
@@ -159,10 +215,17 @@ const EMPTY_FORM = { alias: "", link: "", precio: "", area: "", metro: "", estac
 
 function PropForm({ initial = EMPTY_FORM, onSave, onCancel, filters }) {
   const [f, setF] = useState(initial);
+  const [saving, setSaving] = useState(false);
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
 
   const valid = f.alias && f.precio && f.area && f.metro;
   const passes = valid && Number(f.precio) <= filters.maxPrecio && Number(f.area) >= filters.minArea;
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave({ ...f, precio: Number(f.precio), area: Number(f.area), metro: Number(f.metro), gastosCom: f.gastosCom ? Number(f.gastosCom) : null });
+    setSaving(false);
+  };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(28,23,18,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
@@ -177,9 +240,7 @@ function PropForm({ initial = EMPTY_FORM, onSave, onCancel, filters }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <Input label="Alias / nombre" value={f.alias} onChange={v => set("alias", v)} type="text" placeholder="Ej: Ñuñoa - Irarrázaval" />
           <Input label="Link de referencia" value={f.link} onChange={v => set("link", v)} type="text" placeholder="URL del portal (opcional)" />
-
           <div style={{ borderTop: `1px solid ${T.border}`, margin: "4px 0" }} />
-
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <Input label="Precio (UF)" value={f.precio} onChange={v => set("precio", v)} min={500} max={20000} step={50} placeholder="Ej: 2800" />
             <Input label="Superficie (m²)" value={f.area} onChange={v => set("area", v)} min={20} max={500} step={1} placeholder="Ej: 65" />
@@ -194,14 +255,11 @@ function PropForm({ initial = EMPTY_FORM, onSave, onCancel, filters }) {
                     background: f.estacionamiento === v ? T.accentLight : "transparent",
                     color: f.estacionamiento === v ? T.accent : T.muted,
                     transition: "all 0.15s",
-                  }}>
-                    {v ? "Sí" : "No"}
-                  </button>
+                  }}>{v ? "Sí" : "No"}</button>
                 ))}
               </div>
             </div>
           </div>
-
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             {[["banhos", "Baños"], ["habitaciones", "Habitaciones"]].map(([k, label]) => (
               <div key={k} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -220,8 +278,6 @@ function PropForm({ initial = EMPTY_FORM, onSave, onCancel, filters }) {
               </div>
             ))}
           </div>
-
-          {/* Complementary info */}
           <div style={{ borderTop: `1px solid ${T.border}`, margin: "4px 0" }} />
           <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: T.faint }}>Información complementaria</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -241,8 +297,6 @@ function PropForm({ initial = EMPTY_FORM, onSave, onCancel, filters }) {
             </div>
             <Input label="Gastos comunes ($)" value={f.gastosCom} onChange={v => set("gastosCom", v)} type="number" min={0} step={5000} placeholder="Ej: 85000" />
           </div>
-
-          {/* Filter warning */}
           {valid && !passes && (
             <div style={{ padding: "10px 14px", borderRadius: 8, background: T.warnLight, border: `1px solid ${T.warn}30`, fontSize: 13, color: T.warn }}>
               ⚠ Este depto no cumple tus filtros mínimos — igual puedes guardarlo, quedará marcado como descartado.
@@ -252,8 +306,8 @@ function PropForm({ initial = EMPTY_FORM, onSave, onCancel, filters }) {
 
         <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
           <Btn variant="secondary" onClick={onCancel} style={{ flex: 1 }}>Cancelar</Btn>
-          <Btn disabled={!valid} onClick={() => onSave({ ...f, precio: Number(f.precio), area: Number(f.area), metro: Number(f.metro) })} style={{ flex: 2 }}>
-            Guardar depto
+          <Btn disabled={!valid || saving} onClick={handleSave} style={{ flex: 2 }}>
+            {saving ? "Guardando..." : "Guardar depto"}
           </Btn>
         </div>
       </div>
@@ -262,15 +316,15 @@ function PropForm({ initial = EMPTY_FORM, onSave, onCancel, filters }) {
 }
 
 // ─── SCREEN 2: LIST ───────────────────────────────────────────────────────────
-function ListScreen({ props, filters, selected, onSelect, onAdd, onEdit, onDelete, onCompare, onEditFilters }) {
+function ListScreen({ props, filters, selected, onSelect, onAdd, onEdit, onDelete, onCompare, onEditFilters, user, onSignOut, loading }) {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
-  const handleSave = useCallback((data) => {
+  const handleSave = useCallback(async (data) => {
     if (editTarget !== null) {
-      onEdit(editTarget, data);
+      await onEdit(editTarget, data);
     } else {
-      onAdd(data);
+      await onAdd(data);
     }
     setShowForm(false);
     setEditTarget(null);
@@ -280,9 +334,7 @@ function ListScreen({ props, filters, selected, onSelect, onAdd, onEdit, onDelet
   const failing = props.filter(p => !passesFilter(p, filters));
 
   return (
-    <div style={{ minHeight: "100vh", background: T.bg, fontFamily: "'DM Sans', sans-serif" }}>
-
-      {/* Topbar */}
+    <div style={{ minHeight: "100vh", background: T.bg }}>
       <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: "0 24px", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ maxWidth: 860, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -293,13 +345,16 @@ function ListScreen({ props, filters, selected, onSelect, onAdd, onEdit, onDelet
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {user?.user_metadata?.avatar_url && (
+              <img src={user.user_metadata.avatar_url} style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${T.border}` }} />
+            )}
             <Btn variant="ghost" onClick={onEditFilters} style={{ fontSize: 12 }}>⚙ Filtros</Btn>
+            <Btn variant="ghost" onClick={onSignOut} style={{ fontSize: 12 }}>Salir</Btn>
             <Btn onClick={() => { setEditTarget(null); setShowForm(true); }} style={{ fontSize: 13 }}>+ Agregar</Btn>
           </div>
         </div>
       </div>
 
-      {/* Filters summary */}
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "16px 24px 0" }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, color: T.faint }}>Filtros activos:</span>
@@ -308,9 +363,12 @@ function ListScreen({ props, filters, selected, onSelect, onAdd, onEdit, onDelet
         </div>
       </div>
 
-      {/* Property list */}
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "20px 24px" }}>
-        {props.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "80px 24px" }}>
+            <p style={{ fontFamily: "'Fraunces', serif", fontSize: 22, color: T.muted }}>Cargando tus deptos...</p>
+          </div>
+        ) : props.length === 0 ? (
           <div style={{ textAlign: "center", padding: "80px 24px", color: T.faint }}>
             <p style={{ fontFamily: "'Fraunces', serif", fontSize: 22, marginBottom: 8, color: T.muted }}>Sin deptos aún</p>
             <p style={{ fontSize: 14, marginBottom: 24 }}>Agrega tu primer depto para comenzar</p>
@@ -324,24 +382,18 @@ function ListScreen({ props, filters, selected, onSelect, onAdd, onEdit, onDelet
               const score = overallScore(p);
               const color = PROPERTY_COLORS[i % PROPERTY_COLORS.length];
               const canSelect = isSelected || selected.length < 3;
-
               return (
                 <div key={p.id} className="prop-card" style={{
                   background: T.surface,
                   border: `1.5px solid ${isSelected ? color : passes ? T.border : T.warn + "55"}`,
-                  borderRadius: 14,
-                  padding: "16px 20px",
-                  display: "grid",
-                  gridTemplateColumns: "auto 1fr auto",
-                  gap: 16,
-                  alignItems: "center",
+                  borderRadius: 14, padding: "16px 20px",
+                  display: "grid", gridTemplateColumns: "auto 1fr auto",
+                  gap: 16, alignItems: "center",
                   opacity: passes ? 1 : 0.65,
                   transition: "border-color 0.15s, box-shadow 0.15s",
                   boxShadow: isSelected ? `0 0 0 3px ${color}20` : "none",
-                  position: "relative",
                 }}>
-                  {/* Select toggle */}
-                  <button onClick={() => canSelect || isSelected ? onSelect(p.id) : null}
+                  <button onClick={() => (canSelect || isSelected) ? onSelect(p.id) : null}
                     disabled={!canSelect && !isSelected}
                     style={{
                       width: 28, height: 28, borderRadius: 8, border: `2px solid ${isSelected ? color : T.border}`,
@@ -349,11 +401,8 @@ function ListScreen({ props, filters, selected, onSelect, onAdd, onEdit, onDelet
                       color: "#fff", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center",
                       transition: "all 0.15s", flexShrink: 0,
                       opacity: (!canSelect && !isSelected) ? 0.35 : 1,
-                    }}>
-                    {isSelected ? "✓" : ""}
-                  </button>
+                    }}>{isSelected ? "✓" : ""}</button>
 
-                  {/* Main info */}
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
                       <span style={{ fontWeight: 600, fontSize: 15, color: T.text }}>{p.alias}</span>
@@ -378,7 +427,6 @@ function ListScreen({ props, filters, selected, onSelect, onAdd, onEdit, onDelet
                     </div>
                   </div>
 
-                  {/* Score + actions */}
                   <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
                     {passes && (
                       <div style={{ textAlign: "center" }}>
@@ -398,32 +446,25 @@ function ListScreen({ props, filters, selected, onSelect, onAdd, onEdit, onDelet
         )}
       </div>
 
-      {/* Compare CTA */}
       {selected.length >= 2 && (
         <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 20 }}>
           <div className="fade-in" style={{
             background: T.text, color: "#fff", borderRadius: 50, padding: "14px 28px",
             display: "flex", alignItems: "center", gap: 14, boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
           }}>
-            <span style={{ fontSize: 14 }}>
-              {selected.length} deptos seleccionados
-            </span>
+            <span style={{ fontSize: 14 }}>{selected.length} deptos seleccionados</span>
             <button onClick={onCompare} style={{
               background: T.accent, color: "#fff", border: "none", borderRadius: 30,
               padding: "8px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer",
-            }}>
-              Comparar →
-            </button>
+            }}>Comparar →</button>
           </div>
         </div>
       )}
 
-      {/* Form modal */}
       {showForm && (
         <PropForm
           initial={editTarget !== null ? props.find(p => p.id === editTarget) : EMPTY_FORM}
-          filters={filters}
-          onSave={handleSave}
+          filters={filters} onSave={handleSave}
           onCancel={() => { setShowForm(false); setEditTarget(null); }}
         />
       )}
@@ -433,15 +474,11 @@ function ListScreen({ props, filters, selected, onSelect, onAdd, onEdit, onDelet
 
 // ─── SCREEN 3: COMPARE ────────────────────────────────────────────────────────
 const AXIS_LABELS = {
-  precio: "Precio",
-  area: "Superficie",
-  metro: "Metro",
-  estac: "Estaciona-\nmiento",
-  banhos: "Baños",
-  habitaciones: "Habitaciones",
+  precio: "Precio", area: "Superficie", metro: "Metro",
+  estac: "Estaciona-\nmiento", banhos: "Baños", habitaciones: "Habitaciones",
 };
 
-function CustomAngleAxis({ payload, cx, cy, x, y, textAnchor }) {
+function CustomAngleAxis({ payload, x, y, textAnchor }) {
   const lines = payload.value.split("\n");
   return (
     <text x={x} y={y} textAnchor={textAnchor} fontSize={11} fill={T.muted} fontFamily="DM Sans" fontWeight={500}>
@@ -450,23 +487,19 @@ function CustomAngleAxis({ payload, cx, cy, x, y, textAnchor }) {
   );
 }
 
-function CompareScreen({ props, selected, filters, onBack }) {
+function CompareScreen({ props, selected, onBack }) {
   const selectedProps = selected.map(id => props.find(p => p.id === id)).filter(Boolean);
   const colorMap = {};
-  selected.forEach((id, i) => { colorMap[id] = PROPERTY_COLORS[props.findIndex(p => p.id === id) % PROPERTY_COLORS.length]; });
+  selected.forEach(id => { colorMap[id] = PROPERTY_COLORS[props.findIndex(p => p.id === id) % PROPERTY_COLORS.length]; });
 
   const radarData = Object.keys(AXIS_LABELS).map(key => {
     const entry = { axis: AXIS_LABELS[key] };
-    selectedProps.forEach(p => {
-      entry[p.alias] = +normalize(p)[key].toFixed(1);
-    });
+    selectedProps.forEach(p => { entry[p.alias] = +normalize(p)[key].toFixed(1); });
     return entry;
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: T.bg, fontFamily: "'DM Sans', sans-serif" }}>
-
-      {/* Topbar */}
+    <div style={{ minHeight: "100vh", background: T.bg }}>
       <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: "0 24px", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ maxWidth: 860, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -474,44 +507,28 @@ function CompareScreen({ props, selected, filters, onBack }) {
             <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 700 }}>Comparativa</h1>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            {selectedProps.map((p, i) => (
-              <Chip key={p.id} color={colorMap[p.id]}>{p.alias}</Chip>
-            ))}
+            {selectedProps.map(p => <Chip key={p.id} color={colorMap[p.id]}>{p.alias}</Chip>)}
           </div>
         </div>
       </div>
 
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "32px 24px" }}>
-
-        {/* Radar */}
         <div className="fade-in" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: "32px 16px 24px", marginBottom: 24, boxShadow: "0 2px 20px rgba(0,0,0,0.04)" }}>
           <p style={{ textAlign: "center", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: T.faint, marginBottom: 4 }}>Análisis comparativo</p>
           <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 24, fontWeight: 700, textAlign: "center", marginBottom: 24, color: T.text }}>Radar de propiedades</h2>
-
           <ResponsiveContainer width="100%" height={380}>
             <RadarChart data={radarData} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
               <PolarGrid stroke={T.border} strokeDasharray="3 3" />
               <PolarAngleAxis dataKey="axis" tick={<CustomAngleAxis />} />
-              {selectedProps.map((p, i) => (
-                <Radar
-                  key={p.id}
-                  name={p.alias}
-                  dataKey={p.alias}
-                  stroke={colorMap[p.id]}
-                  fill={colorMap[p.id]}
-                  fillOpacity={0.12}
-                  strokeWidth={2.5}
-                  dot={{ r: 4, fill: colorMap[p.id], strokeWidth: 0 }}
-                />
+              {selectedProps.map(p => (
+                <Radar key={p.id} name={p.alias} dataKey={p.alias}
+                  stroke={colorMap[p.id]} fill={colorMap[p.id]} fillOpacity={0.12}
+                  strokeWidth={2.5} dot={{ r: 4, fill: colorMap[p.id], strokeWidth: 0 }} />
               ))}
-              <Tooltip
-                contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, fontFamily: "DM Sans", fontSize: 12 }}
-                formatter={(v, name) => [`${v}/10`, name]}
-              />
+              <Tooltip contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, fontFamily: "DM Sans", fontSize: 12 }}
+                formatter={(v, name) => [`${v}/10`, name]} />
             </RadarChart>
           </ResponsiveContainer>
-
-          {/* Legend */}
           <div style={{ display: "flex", gap: 20, justifyContent: "center", marginTop: 8, flexWrap: "wrap" }}>
             {selectedProps.map(p => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -522,7 +539,6 @@ function CompareScreen({ props, selected, filters, onBack }) {
           </div>
         </div>
 
-        {/* Score cards */}
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${selectedProps.length}, 1fr)`, gap: 16, marginBottom: 24 }}>
           {selectedProps.map(p => {
             const score = overallScore(p);
@@ -538,12 +554,10 @@ function CompareScreen({ props, selected, filters, onBack }) {
           })}
         </div>
 
-        {/* Detail table */}
         <div className="fade-in" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 20px rgba(0,0,0,0.04)" }}>
           <div style={{ padding: "20px 24px", borderBottom: `1px solid ${T.border}` }}>
             <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 700 }}>Detalle por variable</h3>
           </div>
-
           {[
             { label: "Precio", key: "precio", format: v => `${v.toLocaleString()} UF`, lower: true },
             { label: "Superficie", key: "area", format: v => `${v} m²`, lower: false },
@@ -556,7 +570,6 @@ function CompareScreen({ props, selected, filters, onBack }) {
           ].map((row, ri) => {
             const vals = selectedProps.map(p => p[row.key]);
             const best = row.info ? null : (row.lower ? Math.min(...vals.filter(v => typeof v === "number")) : Math.max(...vals.filter(v => typeof v === "number")));
-
             return (
               <div key={row.key} style={{ display: "grid", gridTemplateColumns: `160px repeat(${selectedProps.length}, 1fr)`, borderBottom: ri < 7 ? `1px solid ${T.border}` : "none", background: ri % 2 === 0 ? "transparent" : `${T.bg}80` }}>
                 <div style={{ padding: "14px 24px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
@@ -582,7 +595,6 @@ function CompareScreen({ props, selected, filters, onBack }) {
           })}
         </div>
 
-        {/* Normalized scores table */}
         <div className="fade-in" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, overflow: "hidden", marginTop: 16, boxShadow: "0 2px 20px rgba(0,0,0,0.04)" }}>
           <div style={{ padding: "20px 24px", borderBottom: `1px solid ${T.border}` }}>
             <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 700 }}>Puntaje por eje <span style={{ fontSize: 13, color: T.faint, fontFamily: "'DM Sans'", fontWeight: 400 }}>(0–10)</span></h3>
@@ -609,48 +621,88 @@ function CompareScreen({ props, selected, filters, onBack }) {
 }
 
 // ─── ROOT APP ─────────────────────────────────────────────────────────────────
-let _id = SAMPLE.length + 1;
-
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [screen, setScreen] = useState("config");
   const [filters, setFilters] = useState({ maxPrecio: 3000, minArea: 50 });
-  const [props, setProps] = useState(SAMPLE);
+  const [props, setProps] = useState([]);
   const [selected, setSelected] = useState([]);
+  const [loadingProps, setLoadingProps] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    setLoadingProps(true);
+    supabase.from("propiedades").select("*").order("created_at", { ascending: true })
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setProps(data.map(d => ({
+            id: d.id, alias: d.alias, link: d.link || "",
+            precio: d.precio, area: d.area, metro: d.metro,
+            estacionamiento: d.estacionamiento, banhos: d.banhos, habitaciones: d.habitaciones,
+            orientacion: d.orientacion || "", gastosCom: d.gastos_com || "",
+          })));
+        }
+        setLoadingProps(false);
+      });
+  }, [session]);
+
+  const handleAdd = async (data) => {
+    const { data: inserted, error } = await supabase.from("propiedades")
+      .insert([{ user_id: session.user.id, alias: data.alias, link: data.link, precio: data.precio, area: data.area, metro: data.metro, estacionamiento: data.estacionamiento, banhos: data.banhos, habitaciones: data.habitaciones, orientacion: data.orientacion || null, gastos_com: data.gastosCom || null }])
+      .select().single();
+    if (!error && inserted) setProps(prev => [...prev, { ...data, id: inserted.id }]);
+  };
+
+  const handleEdit = async (id, data) => {
+    const { error } = await supabase.from("propiedades")
+      .update({ alias: data.alias, link: data.link, precio: data.precio, area: data.area, metro: data.metro, estacionamiento: data.estacionamiento, banhos: data.banhos, habitaciones: data.habitaciones, orientacion: data.orientacion || null, gastos_com: data.gastosCom || null })
+      .eq("id", id);
+    if (!error) setProps(prev => prev.map(p => p.id === id ? { ...data, id } : p));
+  };
+
+  const handleDelete = async (id) => {
+    const { error } = await supabase.from("propiedades").delete().eq("id", id);
+    if (!error) { setProps(prev => prev.filter(p => p.id !== id)); setSelected(prev => prev.filter(x => x !== id)); }
+  };
 
   const handleSelect = (id) => {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : prev.length < 3 ? [...prev, id] : prev);
   };
 
-  const handleAdd = (data) => {
-    setProps(prev => [...prev, { ...data, id: _id++ }]);
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setProps([]); setSelected([]); setScreen("config");
   };
 
-  const handleEdit = (id, data) => {
-    setProps(prev => prev.map(p => p.id === id ? { ...data, id } : p));
-  };
-
-  const handleDelete = (id) => {
-    setProps(prev => prev.filter(p => p.id !== id));
-    setSelected(prev => prev.filter(x => x !== id));
-  };
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: T.bg, fontFamily: "'DM Sans', sans-serif", color: T.faint }}>
+        <style>{css}</style>
+        Cargando...
+      </div>
+    );
+  }
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <style>{css}</style>
-      {screen === "config" && (
-        <ConfigScreen onDone={(f) => { setFilters(f); setScreen("list"); }} />
-      )}
-      {screen === "list" && (
-        <ListScreen
-          props={props} filters={filters} selected={selected}
-          onSelect={handleSelect} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete}
-          onCompare={() => setScreen("compare")}
-          onEditFilters={() => setScreen("config")}
-        />
-      )}
-      {screen === "compare" && (
-        <CompareScreen props={props} selected={selected} filters={filters} onBack={() => setScreen("list")} />
-      )}
+      {!session && <LoginScreen />}
+      {session && screen === "config" && <ConfigScreen user={session.user} onDone={(f) => { setFilters(f); setScreen("list"); }} onSignOut={handleSignOut} />}
+      {session && screen === "list" && <ListScreen props={props} filters={filters} selected={selected} onSelect={handleSelect} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete} onCompare={() => setScreen("compare")} onEditFilters={() => setScreen("config")} user={session.user} onSignOut={handleSignOut} loading={loadingProps} />}
+      {session && screen === "compare" && <CompareScreen props={props} selected={selected} onBack={() => setScreen("list")} />}
     </div>
   );
 }
