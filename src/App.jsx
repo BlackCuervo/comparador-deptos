@@ -660,8 +660,11 @@ export default function App() {
   const [props, setProps] = useState([]);
   const [selected, setSelected] = useState([]);
   const [loadingProps, setLoadingProps] = useState(false);
+  const cargando = useRef(false);  
 
   const cargarProps = async () => {
+    if (cargando.current) return; 
+    cargando.current = true;
     setLoadingProps(true);
     const { data, error } = await supabase
       .from("propiedades")
