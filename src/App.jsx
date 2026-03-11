@@ -114,17 +114,27 @@ function Btn({ children, onClick, variant = "primary", disabled, style: s = {} }
 
 // ─── SCREEN 0: LOGIN ──────────────────────────────────────────────────────────
 function LoginScreen() {
+  const [mode, setMode] = useState("login"); // "login" | "register"
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const handleGoogle = async () => {
+  const handleSubmit = async () => {
     setLoading(true);
     setError("");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin },
-    });
-    if (error) { setError(error.message); setLoading(false); }
+    setSuccess("");
+
+    if (mode === "login") {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) setError("Correo o contraseña incorrectos.");
+    } else {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) setError(error.message);
+      else setSuccess("¡Cuenta creada! Revisa tu correo para confirmar tu cuenta y luego inicia sesión.");
+    }
+    setLoading(false);
   };
 
   return (
@@ -132,30 +142,47 @@ function LoginScreen() {
       <div style={{ maxWidth: 400, width: "100%", textAlign: "center" }}>
         <p style={{ fontSize: 11, letterSpacing: 3, color: T.faint, textTransform: "uppercase", marginBottom: 12 }}>Comparador de Deptos</p>
         <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 38, fontWeight: 700, color: T.text, lineHeight: 1.1, marginBottom: 16 }}>
-          Bienvenido
+          {mode === "login" ? "Bienvenido" : "Crear cuenta"}
         </h1>
-        <p style={{ color: T.muted, fontSize: 15, lineHeight: 1.6, marginBottom: 40 }}>
-          Inicia sesión para guardar y comparar tus deptos favoritos. Tus datos estarán disponibles cada vez que vuelvas.
+        <p style={{ color: T.muted, fontSize: 15, lineHeight: 1.6, marginBottom: 32 }}>
+          {mode === "login"
+            ? "Inicia sesión para acceder a tus deptos guardados."
+            : "Crea tu cuenta para guardar y comparar deptos."}
         </p>
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 28, boxShadow: "0 2px 20px rgba(0,0,0,0.05)" }}>
-          <button onClick={handleGoogle} disabled={loading} style={{
-            width: "100%", padding: "13px 20px", borderRadius: 10,
-            border: `1.5px solid ${T.border}`, background: T.surface,
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
-            fontSize: 15, fontWeight: 600, color: T.text, cursor: loading ? "wait" : "pointer",
-            transition: "all 0.15s", fontFamily: "inherit", opacity: loading ? 0.6 : 1,
+
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 28, boxShadow: "0 2px 20px rgba(0,0,0,0.05)", textAlign: "left" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <Input label="Correo electrónico" value={email} onChange={setEmail} type="text" placeholder="tu@correo.com" />
+            <Input label="Contraseña" value={password} onChange={setPassword} type="password" placeholder="Mínimo 6 caracteres" />
+          </div>
+
+          {error && (
+            <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 8, background: T.dangerLight, border: `1px solid ${T.danger}30`, fontSize: 13, color: T.danger }}>
+              {error}
+            </div>
+          )}
+          {success && (
+            <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 8, background: T.accentLight, border: `1px solid ${T.accent}30`, fontSize: 13, color: T.accent }}>
+              {success}
+            </div>
+          )}
+
+          <button onClick={handleSubmit} disabled={loading || !email || !password} style={{
+            marginTop: 20, width: "100%", padding: "13px", borderRadius: 10,
+            border: "none", background: T.accent, color: "#fff",
+            fontSize: 15, fontWeight: 600, cursor: loading ? "wait" : "pointer",
+            fontFamily: "inherit", opacity: (loading || !email || !password) ? 0.5 : 1,
+            transition: "opacity 0.15s",
           }}>
-            <svg width="20" height="20" viewBox="0 0 48 48">
-              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-            </svg>
-            {loading ? "Conectando..." : "Continuar con Google"}
+            {loading ? "Cargando..." : mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
           </button>
-          {error && <p style={{ marginTop: 12, fontSize: 13, color: T.danger, textAlign: "center" }}>{error}</p>}
-          <p style={{ marginTop: 20, fontSize: 12, color: T.faint, lineHeight: 1.6 }}>
-            Tus datos se almacenan de forma segura y privada. Solo tú puedes verlos.
+
+          <p style={{ marginTop: 16, fontSize: 13, color: T.muted, textAlign: "center" }}>
+            {mode === "login" ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}{" "}
+            <button onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); setSuccess(""); }}
+              style={{ background: "none", border: "none", color: T.accent, fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+              {mode === "login" ? "Regístrate" : "Inicia sesión"}
+            </button>
           </p>
         </div>
       </div>
@@ -635,15 +662,9 @@ export default function App() {
       setSession(session);
       setAuthLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        setSession(session);
-      } else if (event === "SIGNED_OUT") {
-        setSession(null);
-        setProps([]);
-        setSelected([]);
-        setScreen("config");
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (!session) { setProps([]); setSelected([]); setScreen("config"); }
       setAuthLoading(false);
     });
     return () => subscription.unsubscribe();
