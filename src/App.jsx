@@ -113,8 +113,8 @@ function Btn({ children, onClick, variant = "primary", disabled, style: s = {} }
 }
 
 // ─── SCREEN 0: LOGIN ──────────────────────────────────────────────────────────
-function LoginScreen() {
-  const [mode, setMode] = useState("login"); // "login" | "register"
+function LoginScreen({ onLoginSuccess }) {
+  const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -127,12 +127,16 @@ function LoginScreen() {
     setSuccess("");
 
     if (mode === "login") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setError("Correo o contraseña incorrectos.");
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setError("Correo o contraseña incorrectos.");
+      } else if (data?.session) {
+        onLoginSuccess(data.session);
+      }
     } else {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) setError(error.message);
-      else setSuccess("¡Cuenta creada! Revisa tu correo para confirmar tu cuenta y luego inicia sesión.");
+      else setSuccess("¡Cuenta creada! Ya puedes iniciar sesión.");
     }
     setLoading(false);
   };
@@ -657,35 +661,36 @@ export default function App() {
   const [selected, setSelected] = useState([]);
   const [loadingProps, setLoadingProps] = useState(false);
 
+  const cargarProps = async () => {
+    setLoadingProps(true);
+    const { data, error } = await supabase
+      .from("propiedades")
+      .select("*")
+      .order("created_at", { ascending: true });
+    if (!error && data) {
+      setProps(data.map(d => ({
+        id: d.id, alias: d.alias, link: d.link || "",
+        precio: d.precio, area: d.area, metro: d.metro,
+        estacionamiento: d.estacionamiento, banhos: d.banhos, habitaciones: d.habitaciones,
+        orientacion: d.orientacion || "", gastosCom: d.gastos_com || "",
+      })));
+    }
+    setLoadingProps(false);
+  };
+
+  // Solo carga una vez al montar — sin listeners reactivos
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setAuthLoading(false);
+      if (session?.user?.id) cargarProps();
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (!session) { setProps([]); setSelected([]); setScreen("config"); }
-      setAuthLoading(false);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+  }, []); // eslint-disable-line
 
-  useEffect(() => {
-    if (!session) return;
-    setLoadingProps(true);
-    supabase.from("propiedades").select("*").order("created_at", { ascending: true })
-      .then(({ data, error }) => {
-        if (!error && data) {
-          setProps(data.map(d => ({
-            id: d.id, alias: d.alias, link: d.link || "",
-            precio: d.precio, area: d.area, metro: d.metro,
-            estacionamiento: d.estacionamiento, banhos: d.banhos, habitaciones: d.habitaciones,
-            orientacion: d.orientacion || "", gastosCom: d.gastos_com || "",
-          })));
-        }
-        setLoadingProps(false);
-      });
-  }, [session]);
+  const handleLoginSuccess = (newSession) => {
+    setSession(newSession);
+    cargarProps();
+  };
 
   const handleAdd = async (data) => {
     const { data: inserted, error } = await supabase.from("propiedades")
@@ -712,7 +717,10 @@ export default function App() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    setProps([]); setSelected([]); setScreen("config");
+    setSession(null);
+    setProps([]);
+    setSelected([]);
+    setScreen("config");
   };
 
   if (authLoading) {
@@ -727,7 +735,7 @@ export default function App() {
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <style>{css}</style>
-      {!session && <LoginScreen />}
+      {!session && <LoginScreen onLoginSuccess={handleLoginSuccess} />}
       {session && screen === "config" && <ConfigScreen user={session.user} onDone={(f) => { setFilters(f); setScreen("list"); }} onSignOut={handleSignOut} />}
       {session && screen === "list" && <ListScreen props={props} filters={filters} selected={selected} onSelect={handleSelect} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete} onCompare={() => setScreen("compare")} onEditFilters={() => setScreen("config")} user={session.user} onSignOut={handleSignOut} loading={loadingProps} />}
       {session && screen === "compare" && <CompareScreen props={props} selected={selected} onBack={() => setScreen("list")} />}
