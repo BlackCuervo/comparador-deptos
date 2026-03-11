@@ -635,8 +635,15 @@ export default function App() {
       setSession(session);
       setAuthLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        setSession(session);
+      } else if (event === "SIGNED_OUT") {
+        setSession(null);
+        setProps([]);
+        setSelected([]);
+        setScreen("config");
+      }
       setAuthLoading(false);
     });
     return () => subscription.unsubscribe();
